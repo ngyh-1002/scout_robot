@@ -5,6 +5,8 @@ from std_msgs.msg import String
 import cv2
 from pyzbar import pyzbar
 import numpy as np
+import time # 디버깅을 위해 time 모듈 추가 가능 (여기서는 사용하지 않음)
+
 
 # Nav2 노드와의 통신 토픽
 ROOM_COMMAND_TOPIC = "/room_command" 
@@ -16,7 +18,6 @@ ARRIVED_COMMAND = "goal_reached"
 COMMAND_TO_QR_MAP = {
     "go_room501": "501",
     "go_home": "home",  # 'go_home' 명령을 받았을 때 'home' QR 코드를 기대
-    # 필요에 따라 다른 방을 여기에 추가할 수 있습니다.
     "go_room502": "502",
     "go_room503": "503",
 }
@@ -74,12 +75,21 @@ class QrDetector(Node):
         """
         ROS CompressedImage 메시지를 디코딩하고 QR 코드를 감지합니다.
         """
+        
         # --- 기대 QR 데이터가 설정되지 않았으면 스캔하지 않음 ---
         if self.expected_qr_data is None:
-            # self.get_logger().debug("기대 QR 코드가 설정되지 않아 스캔을 건너뜁니다.")
+            self.get_logger().debug("기대 QR 코드가 설정되지 않아 스캔을 건너뜁니다.")
+            # 디코딩된 이미지가 필요할 수 있으므로, 이미지를 디코딩하여 표시합니다.
+            try:
+                current_frame = cv2.imdecode(np.frombuffer(data.data, dtype=np.uint8), cv2.IMREAD_COLOR)
+                if current_frame is not None:
+                    cv2.imshow(f"QR Detector (Target: None)", current_frame)
+                    cv2.waitKey(1)
+            except Exception:
+                pass # 디코딩 실패 시 무시하고 반환
             return
 
-        # --- 이미지 디코딩 (기존과 동일) ---
+        # --- 이미지 디코딩 ---
         try:
             np_arr = np.frombuffer(data.data, dtype=np.uint8)
             current_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
@@ -95,15 +105,20 @@ class QrDetector(Node):
         # --- QR 코드 감지 및 디코딩 ---
         decoded_objects = pyzbar.decode(current_frame)
         qr_detected_in_frame = False
+        
+        # ⚠️ 디버깅용: 감지된 객체가 없을 경우
+        if not decoded_objects:
+             self.get_logger().debug(f"카메라에서 QR 코드를 찾을 수 없습니다. (기대: {self.expected_qr_data})")
+
 
         for obj in decoded_objects:
             decoded_data = obj.data.decode("utf-8")
             
-            # 3. 기대하는 QR 코드와 일치하는지 확인 (핵심 로직)
+            # 1. 기대하는 QR 코드와 일치하는지 확인 (성공)
             if decoded_data == self.expected_qr_data:
                 qr_detected_in_frame = True
                 
-                # 중복 발행 방지를 위해 상태를 확인
+                # 중복 발행 방지 체크
                 if not self.is_qr_detected:
                     self.is_qr_detected = True # 감지 상태로 변경
                     
@@ -112,14 +127,25 @@ class QrDetector(Node):
                     msg.data = ARRIVED_COMMAND 
                     self.publisher_.publish(msg)
                     
-                    # ⚠️ 요청하신 콘솔 메시지 출력 (도착 확인)
+                    # 🌟 요청하신 콘솔 메시지 출력 (도착 확인)
                     self.get_logger().warn(f"🌟🌟 목표 QR 코드 '{self.expected_qr_data}' 감지! '{ROOM_COMMAND_TOPIC}'에 '{ARRIVED_COMMAND}' 메시지 발행 완료! 🌟🌟")
                     
-                    # QR 코드 감지 성공 후, 다음 명령을 기다리기 위해 expected_qr_data를 None으로 설정 (선택 사항)
-                    # self.expected_qr_data = None 
+                    # ✅ QR 코드 감지 성공 후 기대 QR 데이터 초기화 (핵심 수정)
+                    # 다음 명령을 받기 전까지 QR 인식을 중지하여 중복 발행을 확실히 막습니다.
+                    self.expected_qr_data = None 
+                    
             
-            # --- 영상 표시를 위한 바운딩 박스 및 텍스트 (옵션) ---
+            # 2. 🚫 기대하는 QR 코드가 아닌 다른 목표 QR 코드인 경우 (경고)
+            elif decoded_data in COMMAND_TO_QR_MAP.values(): 
+                self.get_logger().warn(f"🚫 예상치 못한 QR 코드 감지! 기대 QR: '{self.expected_qr_data}', 감지된 QR: '{decoded_data}' (무시)")
+            
+            # 3. ℹ️ Nav2 목표와 관련 없는 기타 QR 코드인 경우 (정보)
+            else:
+                self.get_logger().info(f"다른 정보성 QR 코드 감지: {decoded_data} (Nav2 명령과 무관하여 무시)")
+
+            # --- 영상 표시를 위한 바운딩 박스 및 텍스트 ---
             (x, y, w, h) = obj.rect
+            # 기대 QR과 일치하면 녹색, 아니면 빨간색 (다른 목표 QR 포함)
             color = (0, 255, 0) if decoded_data == self.expected_qr_data else (0, 0, 255)
             cv2.rectangle(current_frame, (x, y), (x + w, y + h), color, 2)
             cv2.putText(current_frame, decoded_data, (x, y - 10), 
@@ -130,7 +156,7 @@ class QrDetector(Node):
             self.is_qr_detected = False
 
         # --- 영상 표시 ---
-        cv2.imshow(f"QR Detector (Target: {self.expected_qr_data})", current_frame)
+        cv2.imshow(f"QR Detector (Target: {self.expected_qr_data if self.expected_qr_data else 'None'})", current_frame)
         cv2.waitKey(1) 
 
 def main(args=None):
