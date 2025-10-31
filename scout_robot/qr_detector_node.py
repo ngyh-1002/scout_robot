@@ -91,6 +91,7 @@ class QrDetector(Node):
         
         except FileNotFoundError:
             self.get_logger().error(f"rooms.yaml 파일을 찾을 수 없습니다: {yaml_path}")
+            # QR_DATA_TO_POSE가 비어 있으면 위치 재설정은 불가능
             
             
     def publish_initial_pose(self, pose_data):
@@ -115,6 +116,7 @@ class QrDetector(Node):
         initial_pose_msg.pose.pose.orientation.w = q[3]
 
         # 공분산은 일반적으로 큰 값으로 설정하여 위치가 불확실함을 알립니다.
+        # (AMCL이 주변 환경을 기반으로 위치를 다시 결정하게 함)
         initial_pose_msg.pose.covariance = np.diag([
             0.5*0.5, 0.5*0.5, 0.0, 0.0, 0.0, np.radians(30.0)*np.radians(30.0)
         ]).flatten().tolist()
@@ -143,9 +145,10 @@ class QrDetector(Node):
         ROS CompressedImage 메시지를 디코딩하고 QR 코드를 감지합니다.
         """
         
-        # --- 기대 QR 데이터가 설정되지 않았거나 좌표가 없으면 스캔하지 않음 ---
+        # --- 기대 QR 데이터가 설정되지 않았거나 QR_DATA_TO_POSE에 없으면 스캔하지 않음 ---
         if self.expected_qr_data is None or self.expected_qr_data not in QR_DATA_TO_POSE:
             self.get_logger().debug("기대 QR 코드가 설정되지 않았거나 좌표가 없어 스캔을 건너뜁니다.")
+            # ... (영상 표시 로직 생략 가능, 필요하면 주석 해제)
             return
 
         # --- 이미지 디코딩 ---
@@ -154,6 +157,7 @@ class QrDetector(Node):
             current_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
             if current_frame is None:
+                # self.get_logger().error("Image decoding failed.")
                 return
 
         except Exception as e:
@@ -175,7 +179,7 @@ class QrDetector(Node):
                 if not self.is_qr_detected:
                     self.is_qr_detected = True # 감지 상태로 변경
                     
-                    # 1. ✅ 위치 재설정 명령 발행 (AMCL)
+                    # 1. 위치 재설정 명령 발행 (AMCL)
                     pose_data = QR_DATA_TO_POSE[decoded_data]
                     self.publish_initial_pose(pose_data)
                     
@@ -187,7 +191,7 @@ class QrDetector(Node):
                     # 🌟 콘솔 메시지 출력 (도착 및 재설정 확인)
                     self.get_logger().warn(f"🌟🌟 목표 QR 코드 '{self.expected_qr_data}' 감지! 위치 재설정 및 도착 알림 메시지 발행 완료! 🌟🌟")
                     
-                    # ✅ QR 코드 감지 성공 후 기대 QR 데이터 초기화 
+                    # ✅ QR 코드 감지 성공 후 기대 QR 데이터 초기화 (핵심 수정)
                     self.expected_qr_data = None 
                     
             
@@ -208,7 +212,9 @@ class QrDetector(Node):
 
         # 프레임에서 QR 코드가 사라졌을 경우 상태 초기화
         if not qr_detected_in_frame and self.is_qr_detected:
-            pass # QR 인식 상태를 유지하여 중복 발행을 막습니다.
+            # 이 로직은 재설정 후 다시 명령이 들어올 때까지 QR 인식을 막기 위해 주석 처리하거나 제거
+            # self.is_qr_detected = False
+            pass
 
         # --- 영상 표시 ---
         cv2.imshow(f"QR Detector (Target: {self.expected_qr_data if self.expected_qr_data else 'None'})", current_frame)
