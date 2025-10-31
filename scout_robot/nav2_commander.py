@@ -77,11 +77,18 @@ class RoomNavigator(Node):
         self.get_logger().info("Nav2 활성화 완료!")
         self.initial_pose_set = True
 
-        # --- 명령 구독 ---
+        # --- 명령 구독 (외부 명령 수신) ---
         self.command_sub = self.create_subscription(
             String,
             ROOM_COMMAND_TOPIC,
             self.command_callback,
+            10
+        )
+        
+        # ✅ 명령 발행자 추가 (QR Detector에게 명령 전송)
+        self.command_pub = self.create_publisher(
+            String,
+            ROOM_COMMAND_TOPIC, 
             10
         )
         
@@ -103,8 +110,6 @@ class RoomNavigator(Node):
         )
         
         # QR 코드 확인 상태를 추적하는 타이머 (QR Detector가 응답했는지 확인)
-        self.qr_check_timer = None
-        self.qr_check_timeout_sec = 10.0 # QR 코드 확인 타임아웃
         self.qr_check_in_progress = False
 
     def pose_callback(self, msg: PoseWithCovarianceStamped):
@@ -226,13 +231,14 @@ class RoomNavigator(Node):
             self.current_pose.orientation.w
         ])
         
+        self.qr_check_timeout_sec = 5.0 # QR 코드 확인 타임아웃
+        
         # 90도씩 4회 회전 (0, 90, 180, 270도)
         for i in range(4):
             if self.qr_detected:
                 break # 이미 QR 코드를 찾았으면 회전 중지
 
             # 현재 회전 각도 (라디안) 계산
-            # i=0: initial_yaw, i=1: initial_yaw + 90도, i=2: initial_yaw + 180도, i=3: initial_yaw + 270도
             target_yaw = initial_yaw + math.radians(i * 90)
             target_yaw = math.atan2(math.sin(target_yaw), math.cos(target_yaw)) # [-pi, pi] 범위로 정규화
             
@@ -265,22 +271,13 @@ class RoomNavigator(Node):
                     break 
 
             # QR 코드 감지 대기 (최대 5초)
-            # 회전 후 바로 QR 코드 감지를 위해 잠시 대기
             wait_time = 0.0
             while wait_time < self.qr_check_timeout_sec and not self.qr_detected:
                 rclpy.spin_once(self, timeout_sec=0.5)
                 wait_time += 0.5
                 
             if self.qr_detected:
-                self.get_logger().info(f"✅ {i*90}도 회전 후 QR 코드 발견! 위치 재설정 명령을 기다립니다.")
-                # QR Detector에서 발행한 재설정 메시지(ARRIVED_COMMAND)를 수신하면 
-                # QrDetector 노드의 로직에 따라 amcl_pose가 재설정됩니다.
-                
-                # --- Map 절대 좌표 재지정 요청 ---
-                # QR Detector가 ARRIVED_COMMAND를 발행하면, 해당 노드에서 이미
-                # 로봇의 위치(amcl_pose)를 QR 코드가 위치한 Map 절대 좌표로 재설정했다고 가정합니다.
-                # 'RoomsNavigator'는 별도의 재지정 로직 없이, QR Detector의 재설정 성공을 기다립니다.
-                
+                self.get_logger().info(f"✅ {i*90}도 회전 후 QR 코드 발견! 위치 재설정 완료.")
                 self.qr_check_in_progress = False
                 return True # 성공
 
@@ -308,7 +305,8 @@ class RoomNavigator(Node):
             target_x, target_y, _ = pose
             distance = math.sqrt((current_x - target_x)**2 + (current_y - target_y)**2)
             
-            if distance < min_distance and name != self.current_goal_name:
+            # 현재 이동 실패한 목표 지점을 제외하고 가장 가까운 목표를 찾습니다.
+            if distance < min_distance and name != self.current_goal_name: 
                 min_distance = distance
                 closest_target_name = name
                 closest_target_pose = pose
@@ -326,7 +324,8 @@ class RoomNavigator(Node):
         """명령 토픽을 발행하는 헬퍼 함수"""
         msg = String()
         msg.data = command
-        self.command_sub.publish(msg)
+        # ✅ 발행자 객체 self.command_pub 사용
+        self.command_pub.publish(msg)
 
 
 def main():
