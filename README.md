@@ -86,3 +86,65 @@ ros2 topic pub --once /room_command std_msgs/String "data: 'go_room501'" --qos-r
 ```
 
 -----
+
+---
+
+# 🤖 자율주행 로봇 네비게이션 시스템 (ROS 2/Nav2 기반)
+
+본 시스템은 Nav2의 `BasicNavigator`와 **토픽 기반 상태 제어 알고리즘**을 활용하여 로봇의 자율 이동, QR 코드 인식 및 위치 재설정 임무를 수행합니다.
+
+## 1. 🗺️ 네비게이션 기본 원리 및 커스텀 구현
+
+Nav2 스택은 일반적으로 **RViz의 GUI 상호작용**을 통해 작동합니다.
+
+| RViz 표준 작동 방식 | 본 시스템의 작동 방식 | 비고 |
+| :--- | :--- | :--- |
+| **초기 위치 추정** | `2D Pose Estimate` 버튼으로 `/initialpose` 토픽 발행 | `RoomNavigator`의 `setInitialPose()` 또는 `AmclResetter`의 `/initialpose` 토픽 발행 |
+| **목표 위치 설정** | `2D Goal Pose` 버튼으로 `/goal_pose` 토픽 발행 | `RoomNavigator`에서 `rooms.yaml` 파일의 좌표를 읽어 `navigator.goToPose()` 호출 |
+| **경로 계획/실행** | `Global Planner`와 `Local Planner` 자동 실행 | `BasicNavigator`가 Nav2 액션 서버와 통신하여 **자동 처리** |
+
+### ✨ 좌표 관리 및 변환
+
+시스템은 **`rooms.yaml`** 파일을 사용하여 목표 위치 좌표를 관리하며, 이는 Rviz의 **`2D Goal Pose`** 역할을 대신합니다.
+
+#### A. 좌표 파일 생성
+
+`rooms.yaml` 파일은 다음과 같은 방식으로 생성됩니다.
+
+1.  **로컬라이제이션 정보 수집**: AMCL은 로봇의 위치를 **`/amcl_pose`** 토픽으로 발행합니다.
+    * 위치: $x, y$ (m)
+    * 방향: $z, w$ (쿼터니언 성분)
+2.  **쿼터니언 $\rightarrow$ 오일러(Theta) 변환**: `/amcl_pose`에서 얻은 쿼터니언($z, w$) 값을 로봇이 이해하기 쉬운 **Yaw 각도 ($\theta$)**로 변환하여 YAML 파일에 기록합니다.
+
+#### B. 쿼터니언 to Yaw 수식
+
+Nav2와 ROS 2에서 사용하는 표준 **쿼터니언 (Quaternion)**의 $z, w$ 성분으로부터 **Yaw ($\theta$)** 각도를 라디안(radian)으로 변환하는 수식은 다음과 같습니다.
+
+$$
+\theta = \text{atan2}(2 \cdot (q_w \cdot q_z + q_x \cdot q_y), 1 - 2 \cdot (q_y^2 + q_z^2))
+$$
+
+* 여기서 $q_x=0, q_y=0$ (2D 평면 네비게이션 가정)이므로, 수식은 다음과 같이 단순화됩니다:
+
+$$
+\theta = \text{atan2}(2 \cdot q_w \cdot q_z, 1 - 2 \cdot q_z^2)
+$$
+
+## 2. 🔄 토픽 기반 상태 제어 알고리즘 (핵심)
+
+본 시스템은 **"구독 $\rightarrow$ 노드 작동 $\rightarrow$ 발행 $\rightarrow$ 노드 작동 중지"**라는 명확한 순차적 임무 흐름을 통해 Nav2의 안정성을 확보하고 복잡한 임무(QR 검사 및 회전)를 분리하여 처리합니다.
+
+### 시스템 노드 및 토픽 흐름 요약
+
+| 노드 (파일) | 구독 토픽 (시작 트리거) | 발행 토픽 (임무 완료/위임) | 임무 (작동 중 로직) |
+| :--- | :--- | :--- | :--- |
+| **RoomNavigator** (`nav2_commander.py`) | `/room_command` | `/qr_check_command` | Nav2 목표 좌표로 이동 (BasicNavigator 사용) |
+| **QrDetector** (`qr_detector_node.py`) | `/qr_check_command` | `/amcl_reset_command` **OR** `/robot_rotate_command` | 기대 QR 스캔 (10초 타이머), 성공/실패에 따라 명령 위임 |
+| **AmclResetter** (`amcl_reset_node.py`) | `/amcl_reset_command` | `/room_command` (QR이 'home'일 때만) | AMCL 위치 강제 재설정 (`/initialpose` 발행) |
+| **RobotRotator** (`robot_rotator_node.py`) | `/robot_rotate_command` | `/qr_check_command` **OR** `/room_command` | 45도 회전 (최대 8회), 8회 초과 시 'go\_home' 명령 발행 |
+
+### 임무 순환의 특징
+
+* **상태 분리**: 로봇이 이동할 때 (`RoomNavigator` 작동), QR 코드를 스캔하거나 회전하는 등의 다른 복잡한 로직은 **절대 동시에 실행되지 않습니다.**
+* **동기적 처리**: `RoomNavigator`의 `move_and_wait` 함수와 `RobotRotator`의 `rotate_robot` 함수는 **Nav2 액션이 완료될 때까지** `rclpy.spin_once`를 사용하여 확실하게 대기합니다.
+* **작동 중지**: 한 노드가 임무를 완수하고 다음 임무를 트리거하는 토픽을 발행하면, 해당 노드는 다음 구독 명령을 받을 때까지 사실상 **대기 상태(작동 중지)**로 전환됩니다.
