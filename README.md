@@ -76,6 +76,62 @@ Nav2 Goal Action을 사용하여 목표 지점 이동 명령을 내리고, `/roo
 ros2 run scout_robot nav2_commander
 ```
 
+### 1\. 📍 `amcl_reset_node.py` (AmclResetter) 실행 매뉴얼
+
+이 노드는 로봇이 QR 코드를 성공적으로 인식했을 때, \*\*AMCL (Adaptive Monte Carlo Localization)\*\*의 위치를 해당 QR 코드의 좌표로 강제로 재설정하는 역할을 합니다.
+
+#### 🌟 핵심 역할
+
+| 기능 | 설명 |
+| :--- | :--- |
+| **Localization 강제 재설정** | `/initialpose` 토픽 발행을 통해 AMCL의 위치 추정값(x, y, $\theta$)을 QR 코드 좌표로 강제 재배치 |
+| **Home 복귀 후 임무 재개** | QR 데이터가 'home'일 경우, 다음 임무 (`go_start`)를 `RoomNavigator`에게 지시 |
+
+#### 🔑 작동 원리
+
+1.  **구독**: `QrDetector` 노드로부터 `/amcl_reset_command` 토픽을 받습니다. (예: `"501"`, `"home"`)
+2.  **좌표 매핑**: 수신된 QR 데이터(`"501"`)를 `rooms.yaml` 파일에 매핑된 실제 지도 좌표 (x, y, $\theta$)로 변환합니다.
+3.  **발행**: 변환된 좌표를 `/initialpose` 토픽으로 발행하여 AMCL 스택을 재배치합니다.
+4.  **조건부 발행**: 수신된 QR 데이터가 \*\*`"home"`\*\*일 경우에만 `/room_command` 토픽에 `"go_start"` 명령을 추가로 발행하여 로봇을 시작 위치로 복귀시킵니다.
+
+#### 🚀 실행 명령
+
+```bash
+# 터미널에서 ROS 2 환경이 설정되어 있는지 확인 후 실행합니다.
+# (예: source install/setup.bash)
+
+ros2 run scout_robot amcl_reset_node.py
+```
+
+-----
+
+### 2\. 🔄 `robot_rotator_node.py` (RobotRotator) 실행 매뉴얼
+
+이 노드는 `QrDetector`가 QR 코드를 인식하지 못했을 때 호출되어, 로봇을 45도씩 회전시키고 재검사를 요청하는 역할을 합니다.
+
+#### 🌟 핵심 역할
+
+| 기능 | 설명 |
+| :--- | :--- |
+| **로봇 회전** | Nav2를 사용하여 로봇을 **45도**씩 회전시킵니다. |
+| **재검사 요청** | 회전 성공 후 `QrDetector`에게 **QR 재검사**를 요청합니다. |
+| **최대 횟수 제한** | 회전 횟수가 8회를 초과하면 **홈 복귀 명령**을 강제 발행합니다. |
+
+#### 🔑 작동 원리
+
+1.  **구독**: `QrDetector` 노드로부터 `/robot_rotate_command` 토픽을 받습니다. (예: `"ROTATE_LEFT_45:go_room501"`)
+2.  **카운트**: 내부 변수 `self.rotation_count`를 **+1** 합니다.
+3.  **최대 횟수 확인**:
+      * **8회 이하**: 로봇을 **45도 회전** (`rotate_robot` 함수)시키고, 성공 시 `/qr_check_command` 토픽에 목표 명령(예: `"go_room501"`)을 발행하여 `QrDetector`에게 재검사를 요청합니다.
+      * **8회 초과**: `/room_command` 토픽에 **`"go_home"`** 명령을 발행하여 로봇에게 임무를 포기하고 기지로 복귀하도록 지시합니다.
+
+#### 🚀 실행 명령
+
+```bash
+# 터미널에서 ROS 2 환경이 설정되어 있는지 확인 후 실행합니다.
+
+ros2 run scout_robot robot_rotator_node.py
+```
 ### 3.3. 명령 발행 (예시)
 
 `nav2_commander` 노드가 실행 중일 때, 새로운 터미널에서 아래 명령을 통해 로봇에게 이동 목표를 지정할 수 있습니다.
