@@ -30,6 +30,8 @@ class RoomNavigator(Node):
             
         self.start_pose = [rooms['start']['x'], rooms['start']['y'], rooms['start']['theta']]
         self.room501_pose = [rooms['room501']['x'], rooms['room501']['y'], rooms['room501']['theta']]
+        self.room502_pose = [rooms['room502']['x'], rooms['room502']['y'], rooms['room502']['theta']] # 🌟 추가
+        self.room503_pose = [rooms['room503']['x'], rooms['room503']['y'], rooms['room503']['theta']] # 🌟 추가
         self.home_pose = [rooms['home']['x'], rooms['home']['y'], rooms['home']['theta']]
         self.start_pose_coords = rooms['start']
 
@@ -84,7 +86,7 @@ class RoomNavigator(Node):
         self.qr_command_pub.publish(msg)
         self.get_logger().warn(f"➡️ '{command}' 도착 완료. QR Detector에게 검사 명령 발행 완료.")
 
-    def move_and_wait(self, pose: PoseStamped, name: str, command: str):
+    def move_and_wait(self, pose: PoseStamped, name: str, command: str, check_qr: bool = True): # 🌟 check_qr 인자 추가
         """목표로 이동을 요청하고 완료될 때까지 대기합니다. 완료 후 QR 검사 명령을 발행합니다."""
         self.get_logger().info(f"'{name}'(x:{pose.pose.position.x:.2f}, y:{pose.pose.position.y:.2f})로 이동 명령 전송. 출발합니다.")
         self.navigator.goToPose(pose)
@@ -96,9 +98,10 @@ class RoomNavigator(Node):
         result = self.navigator.getResult()
         
         if result == TaskResult.SUCCEEDED:
-            self.get_logger().info(f"✅ '{name}' 도착 완료! 다음 단계(QR 검사) 명령을 발행합니다.")
-            # 🌟 이동 완료 시 QR 검사 명령 발행
-            self.publish_qr_command(command) 
+            self.get_logger().info(f"✅ '{name}' 도착 완료!")
+            # 🌟 check_qr이 True일 경우에만 QR 검사 명령 발행
+            if check_qr:
+                self.publish_qr_command(command) 
         
         elif result == TaskResult.CANCELED:
             self.get_logger().warn(f"⚠️ '{name}' 이동이 취소되었습니다.")
@@ -115,18 +118,28 @@ class RoomNavigator(Node):
         if command == "go_room501": 
             x, y, theta = self.room501_pose
             pose = self.create_goal_pose(x, y, theta)
-            # 🌟 command를 move_and_wait에 전달
-            self.move_and_wait(pose, "room501", command) 
+            self.move_and_wait(pose, "room501", command, check_qr=True) 
+
+        elif command == "go_room502": # 🌟 추가
+            x, y, theta = self.room502_pose
+            pose = self.create_goal_pose(x, y, theta)
+            self.move_and_wait(pose, "room502", command, check_qr=True) 
+
+        elif command == "go_room503": # 🌟 추가
+            x, y, theta = self.room503_pose
+            pose = self.create_goal_pose(x, y, theta)
+            self.move_and_wait(pose, "room503", command, check_qr=True) 
 
         elif command == "go_home": 
             x, y, theta = self.home_pose
             pose = self.create_goal_pose(x, y, theta)
-            self.move_and_wait(pose, "home", command)
+            self.move_and_wait(pose, "home", command, check_qr=True)
             
         elif command == "go_start": 
             x, y, theta = self.start_pose
             pose = self.create_goal_pose(x, y, theta)
-            self.move_and_wait(pose, "start", command)
+            # 🌟🌟🌟 start 좌표로 이동 시에는 QR 검사 명령 발행하지 않음 (check_qr=False) 🌟🌟🌟
+            self.move_and_wait(pose, "start", command, check_qr=False) 
             
         else:
             self.get_logger().warn(f"알 수 없는 명령 수신: {command}")
