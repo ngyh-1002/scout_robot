@@ -1,21 +1,22 @@
+#!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage 
 from std_msgs.msg import String
-from geometry_msgs.msg import PoseWithCovarianceStamped
+# from geometry_msgs.msg import PoseWithCovarianceStamped # 🌟 AMCL 리셋은 새 노드가 담당
 import cv2
 from pyzbar import pyzbar
 import numpy as np
 from ament_index_python.packages import get_package_share_directory
-from tf_transformations import quaternion_from_euler
+# from tf_transformations import quaternion_from_euler # 🌟 AMCL 리셋은 새 노드가 담당
 import os
 import yaml
 
+# ... (기존 QR_COMMAND_TOPIC 정의 생략) ...
+QR_COMMAND_TOPIC = "/qr_check_command"
 
-# Nav2 노드와의 통신 토픽
-ROOM_COMMAND_TOPIC = "/room_command" 
-# 목표 도착을 알리는 명령어 (Nav2 노드에서 처리해야 함)
-ARRIVED_COMMAND = "goal_reached" 
+# 🌟 AMCL 리셋 명령을 보낼 토픽 정의
+AMCL_RESET_COMMAND_TOPIC = "/amcl_reset_command"
 
 # 목표 명령과 기대 QR 데이터 매핑 딕셔너리
 COMMAND_TO_QR_MAP = {
@@ -25,7 +26,7 @@ COMMAND_TO_QR_MAP = {
     "go_room503": "503",
 }
 
-# QR 데이터에 해당하는 좌표 딕셔너리 (동적으로 로드됨)
+# QR 데이터에 해당하는 좌표 딕셔너리 (새 노드와 공유되지만, 일단 이 노드에도 유지)
 QR_DATA_TO_POSE = {}
 
 
@@ -33,46 +34,39 @@ class QrDetector(Node):
     def __init__(self):
         super().__init__('qr_detector_node')
         
-        # --- rooms.yaml 경로 및 좌표 로드 ---
         self.load_room_coordinates()
         
-        # ⚠️ 동적으로 인식해야 할 QR 코드 데이터
-        self.expected_qr_data = None 
+        self.expected_qr_data = None  
+        self.is_qr_detected = False 
         
-        # 1. 카메라 구독 (Subscription) 설정
+        # 1. 카메라 구독
         self.camera_subscription = self.create_subscription(
             CompressedImage,
             '/image_raw/compressed',  
             self.image_callback,
             10)
         
-        # 2. 목표 명령 구독 (Subscription) 설정
+        # 2. 목표 명령 구독 (RoomNavigator -> QR Detector)
         self.command_subscription = self.create_subscription(
             String,
-            ROOM_COMMAND_TOPIC,
+            QR_COMMAND_TOPIC, 
             self.command_callback,
             10
         )
         
-        # 3. 도착 발행 (Publisher) 설정 (RoomNavigator에게 QR 인식 성공 알림)
-        self.publisher_ = self.create_publisher(
-            String, 
-            ROOM_COMMAND_TOPIC, 
+        # 3. 🌟 AMCL 리셋 명령 발행 (QR Detector -> AMCL Reset Node)
+        self.amcl_reset_pub = self.create_publisher(
+            String,
+            AMCL_RESET_COMMAND_TOPIC,
             10
         )
         
-        # 4. 초기 위치 재설정 발행 (Publisher) 설정 (AMCL에게 위치 재설정 요청)
-        self.initial_pose_pub = self.create_publisher(
-            PoseWithCovarianceStamped,
-            '/initialpose', # AMCL의 위치 재설정 토픽
-            10
-        )
-        
-        self.is_qr_detected = False
-        self.get_logger().info(f'QR Detector Node started. Waiting for commands on {ROOM_COMMAND_TOPIC}...')
+        self.get_logger().info(f'QR Detector Node started. Publishing AMCL reset commands on {AMCL_RESET_COMMAND_TOPIC}...')
 
+    # ... (load_room_coordinates, command_callback 함수는 기존과 동일) ...
     def load_room_coordinates(self):
         """rooms.yaml 파일을 읽어 QR 코드에 해당하는 좌표를 로드합니다."""
+        # ... (기존 로직 유지) ...
         global QR_DATA_TO_POSE
         package_share = get_package_share_directory('scout_robot')
         yaml_path = os.path.join(package_share, 'rooms.yaml')
@@ -81,7 +75,6 @@ class QrDetector(Node):
             with open(yaml_path, 'r') as f:
                 rooms_data = yaml.safe_load(f)['rooms']
                 
-            # QR 코드와 목표 좌표 매핑
             for cmd, qr_data in COMMAND_TO_QR_MAP.items():
                 room_name = cmd.replace("go_", "")
                 if room_name in rooms_data:
@@ -92,128 +85,78 @@ class QrDetector(Node):
         except FileNotFoundError:
             self.get_logger().error(f"rooms.yaml 파일을 찾을 수 없습니다: {yaml_path}")
             
-            
-    def publish_initial_pose(self, pose_data):
-        """
-        AMCL에 현재 로봇의 위치(Map 절대 좌표)를 재설정하도록 명령합니다.
-        """
-        x, y, theta = pose_data['x'], pose_data['y'], pose_data['theta']
-        
-        initial_pose_msg = PoseWithCovarianceStamped()
-        initial_pose_msg.header.frame_id = "map"
-        initial_pose_msg.header.stamp = self.get_clock().now().to_msg()
-
-        initial_pose_msg.pose.pose.position.x = x
-        initial_pose_msg.pose.pose.position.y = y
-        initial_pose_msg.pose.pose.position.z = 0.0
-
-        # Yaw 각도(theta)를 쿼터니언으로 변환
-        q = quaternion_from_euler(0, 0, theta)
-        initial_pose_msg.pose.pose.orientation.x = q[0]
-        initial_pose_msg.pose.pose.orientation.y = q[1]
-        initial_pose_msg.pose.pose.orientation.z = q[2]
-        initial_pose_msg.pose.pose.orientation.w = q[3]
-
-        # 공분산은 일반적으로 큰 값으로 설정하여 위치가 불확실함을 알립니다.
-        initial_pose_msg.pose.covariance = np.diag([
-            0.5*0.5, 0.5*0.5, 0.0, 0.0, 0.0, np.radians(30.0)*np.radians(30.0)
-        ]).flatten().tolist()
-        
-        self.initial_pose_pub.publish(initial_pose_msg)
-        self.get_logger().warn(f"🌟🌟 위치 재설정 명령 발행: ({x:.2f}, {y:.2f}, {theta:.2f} rad) 🌟🌟")
-
-
     def command_callback(self, msg: String):
-        """/room_command 토픽을 구독하여 기대 QR 코드를 동적으로 설정"""
+        """/qr_check_command 토픽을 구독하여 기대 QR 코드를 동적으로 설정"""
         command = msg.data.strip()
         
         if command in COMMAND_TO_QR_MAP:
-            # 기대하는 QR 코드 데이터 설정
             self.expected_qr_data = COMMAND_TO_QR_MAP[command]
             self.is_qr_detected = False  # 새 목표 설정 시 감지 상태 초기화
-            self.get_logger().info(f"✅ 새 목표 명령 수신: '{command}'. 기대 QR 코드가 '{self.expected_qr_data}'(으)로 설정되었습니다.")
+            self.get_logger().info(f"✅ QR 검사 명령 수신: '{command}'. 기대 QR 코드가 '{self.expected_qr_data}'(으)로 설정되었습니다. QR 스캔 모드 활성화.")
         else:
-            # goal_reached와 같은 명령은 무시하고, 알 수 없는 명령에 대해서만 경고
-            if command != ARRIVED_COMMAND:
-                 self.get_logger().warn(f"⚠️ 알 수 없는 명령 수신: {command}. 기대 QR 코드를 업데이트하지 않습니다.")
+            self.get_logger().warn(f"⚠️ 알 수 없는 QR 명령 수신: {command}.")
 
 
     def image_callback(self, data: CompressedImage):
         """
-        ROS CompressedImage 메시지를 디코딩하고 QR 코드를 감지합니다.
+        QR 코드를 감지하고 성공 시 AMCL 재설정 명령을 발행합니다.
         """
         
-        # --- 기대 QR 데이터가 설정되지 않았거나 좌표가 없으면 스캔하지 않음 ---
-        if self.expected_qr_data is None or self.expected_qr_data not in QR_DATA_TO_POSE:
-            self.get_logger().debug("기대 QR 코드가 설정되지 않았거나 좌표가 없어 스캔을 건너뜁니다.")
+        if self.expected_qr_data is None or self.is_qr_detected:
+            # ... (비활성화 상태 디버그 뷰 로직 유지) ...
+            try:
+                np_arr = np.frombuffer(data.data, dtype=np.uint8)
+                current_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+                if current_frame is not None:
+                    status_text = f"Target: {self.expected_qr_data if self.expected_qr_data else 'None'}. Scanning {'ON' if self.expected_qr_data else 'OFF'}"
+                    cv2.putText(current_frame, status_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                    cv2.imshow(f"QR Detector View", current_frame)
+                    cv2.waitKey(1)
+            except Exception as e:
+                self.get_logger().error(f'Image data decoding/display failed: {e}')
             return
-
-        # --- 이미지 디코딩 ---
+            
         try:
             np_arr = np.frombuffer(data.data, dtype=np.uint8)
             current_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-            if current_frame is None:
-                return
+            if current_frame is None: return
+
+            decoded_objects = pyzbar.decode(current_frame)
+            
+            for obj in decoded_objects:
+                decoded_data = obj.data.decode("utf-8")
+                
+                if decoded_data == self.expected_qr_data:
+                    
+                    if not self.is_qr_detected:
+                        self.is_qr_detected = True # 감지 상태로 변경
+                        
+                        self.get_logger().warn(f"✅✅✅ QR 코드 '{self.expected_qr_data}' 인식했습니다! AMCL 재설정을 요청합니다. ✅✅✅")
+                        
+                        # 🌟🌟🌟 AMCL Reset Node에게 명령 발행 🌟🌟🌟
+                        reset_msg = String()
+                        # QR 데이터 자체를 명령으로 보냅니다. (예: "501", "home")
+                        reset_msg.data = decoded_data 
+                        self.amcl_reset_pub.publish(reset_msg)
+                        
+                        # QR 코드 감지 성공 후 스캔 중지
+                        self.expected_qr_data = None
+                        
+                # ... (기타 QR 코드 표시 로직 생략) ...
+                (x, y, w, h) = obj.rect
+                color = (0, 255, 0) if decoded_data == self.expected_qr_data else (0, 0, 255)
+                cv2.rectangle(current_frame, (x, y), (x + w, y + h), color, 2)
+                cv2.putText(current_frame, decoded_data, (x, y - 10), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+            cv2.imshow(f"QR Detector View", current_frame)
+            cv2.waitKey(1)
 
         except Exception as e:
-            self.get_logger().error(f'Image data decoding failed: {e}')
-            return
-        
-        # --- QR 코드 감지 및 디코딩 ---
-        decoded_objects = pyzbar.decode(current_frame)
-        qr_detected_in_frame = False
-        
-        for obj in decoded_objects:
-            decoded_data = obj.data.decode("utf-8")
-            
-            # 1. 기대하는 QR 코드와 일치하는지 확인 (성공)
-            if decoded_data == self.expected_qr_data:
-                qr_detected_in_frame = True
-                
-                # 중복 발행 방지 체크
-                if not self.is_qr_detected:
-                    self.is_qr_detected = True # 감지 상태로 변경
-                    
-                    # 1. ✅ 위치 재설정 명령 발행 (AMCL)
-                    pose_data = QR_DATA_TO_POSE[decoded_data]
-                    self.publish_initial_pose(pose_data)
-                    
-                    # 2. 도착 확인 메시지 생성 및 발행 (RoomNavigator에게 알림)
-                    msg = String()
-                    msg.data = ARRIVED_COMMAND 
-                    self.publisher_.publish(msg)
-                    
-                    # 🌟 콘솔 메시지 출력 (도착 및 재설정 확인)
-                    self.get_logger().warn(f"🌟🌟 목표 QR 코드 '{self.expected_qr_data}' 감지! 위치 재설정 및 도착 알림 메시지 발행 완료! 🌟🌟")
-                    
-                    # ✅ QR 코드 감지 성공 후 기대 QR 데이터 초기화 
-                    self.expected_qr_data = None 
-                    
-            
-            # 2. 🚫 기대하는 QR 코드가 아닌 다른 목표 QR 코드인 경우 (경고)
-            elif decoded_data in COMMAND_TO_QR_MAP.values(): 
-                self.get_logger().warn(f"🚫 예상치 못한 QR 코드 감지! 기대 QR: '{self.expected_qr_data}', 감지된 QR: '{decoded_data}' (무시)")
-            
-            # 3. ℹ️ Nav2 목표와 관련 없는 기타 QR 코드인 경우 (정보)
-            else:
-                self.get_logger().info(f"다른 정보성 QR 코드 감지: {decoded_data} (Nav2 명령과 무관하여 무시)")
+            self.get_logger().error(f'Image processing failed: {e}')
 
-            # --- 영상 표시를 위한 바운딩 박스 및 텍스트 ---
-            (x, y, w, h) = obj.rect
-            color = (0, 255, 0) if decoded_data == self.expected_qr_data else (0, 0, 255)
-            cv2.rectangle(current_frame, (x, y), (x + w, y + h), color, 2)
-            cv2.putText(current_frame, decoded_data, (x, y - 10), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-
-        # 프레임에서 QR 코드가 사라졌을 경우 상태 초기화
-        if not qr_detected_in_frame and self.is_qr_detected:
-            pass # QR 인식 상태를 유지하여 중복 발행을 막습니다.
-
-        # --- 영상 표시 ---
-        cv2.imshow(f"QR Detector (Target: {self.expected_qr_data if self.expected_qr_data else 'None'})", current_frame)
-        cv2.waitKey(1) 
-
+# ... (main 함수는 기존과 동일) ...
 def main(args=None):
     rclpy.init(args=args)
     qr_detector = QrDetector()
