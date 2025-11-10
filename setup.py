@@ -30,6 +30,9 @@ setup(
             'nav2_commander = scout_robot.nav2_commander:main',
             'aruco_detector = scout_robot.aruco:main',
             'qr_detector = scout_robot.qr_detector_node:main',
+            'room_nav2 = scout_robot.room_nav2:main',
+            'amcl_reset = scout_robot.amcl_reset_node:main',
+            'robot_rotator = scout_robot.robot_rotator_node:main',
         ],
     },
 )
