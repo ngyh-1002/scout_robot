@@ -17,6 +17,7 @@ AMCL_RESET_COMMAND_TOPIC = "/amcl_reset_command"
 ROBOT_ROTATE_COMMAND_TOPIC = "/robot_rotate_command"
 # @@ qr node @@
 QR_DETECTION_SUCCESS_TOPIC = "/qr_detection_success"
+SPEAKER_COMMAND_TOPIC = "/speaker_command"
 COMMAND_TO_QR_MAP = {
     "go_room501": "501",
     "go_home": "home",  
@@ -75,6 +76,13 @@ class QrDetector(Node):
         self.qr_success_pub = self.create_publisher(
             String,
             QR_DETECTION_SUCCESS_TOPIC,
+            10
+        )
+        
+        # 스피커 노드
+        self.speaker_pub = self.create_subscription(
+            String,
+            SPEAKER_COMMAND_TOPIC, 
             10
         )
 
@@ -227,6 +235,14 @@ class QrDetector(Node):
                 if is_match:
                     
                     if not self.is_qr_detected:
+                        
+                        # 목적지 도착 음성 출력 코드 날리기
+                        speaker_msg = String()
+                        speaker_msg.data = "arrival"
+                        self.speaker_pub.publish(speaker_msg)
+                        self.get_logger().info("🔊 Published Speaker Command: arrival")
+                        
+                        
                         self.is_qr_detected = True       # 감지 상태로 변경
                         self.qr_check_active = False     # 검사 즉시 비활성화
                         self.check_all_mode = False      # 모드 초기화
