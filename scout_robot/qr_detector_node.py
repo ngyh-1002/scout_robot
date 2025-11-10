@@ -80,7 +80,7 @@ class QrDetector(Node):
         )
         
         # 스피커 노드
-        self.speaker_pub = self.create_subscription(
+        self.speaker_pub = self.create_publisher(
             String,
             SPEAKER_COMMAND_TOPIC, 
             10
