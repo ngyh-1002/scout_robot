@@ -17,11 +17,11 @@ QR_COMMAND_TOPIC = "/qr_check_command"
 HOME_COMMAND_TOPIC = "/room_command" 
 
 # 🌟 회전 각도 정의 (라디안)
-ROTATE_ANGLE_RAD = math.pi / 4.0 # 45도
-ROTATE_ANGLE_DEG = 45.0
+ROTATE_LEFT_45_RAD = math.pi / 4.0   # 왼쪽 45도
+ROTATE_RIGHT_90_RAD = -math.pi / 2.0 # 오른쪽 90도 (음수)
 
-# 🌟 최대 회전 횟수
-MAX_ROTATION_COUNT = 8 
+# 🌟🌟🌟 최대 회전 횟수 (1회 동작만 허용) 🌟🌟🌟
+MAX_ROTATION_COUNT = 1 
 
 class RobotRotator(Node):
     def __init__(self):
@@ -44,24 +44,24 @@ class RobotRotator(Node):
             10
         )
         
-        # 2. 🌟🌟🌟 QR Detector에게 재검사 명령 발행 🌟🌟🌟
+        # 2. QR Detector에게 재검사 명령 발행
         self.qr_command_pub = self.create_publisher(
             String,
             QR_COMMAND_TOPIC,
             10
         )
 
-        # 3. 🌟🌟🌟 Nav2 Commander에게 홈 복귀 명령 발행 (토픽 수정됨) 🌟🌟🌟
+        # 3. Nav2 Commander에게 홈 복귀 명령 발행
         self.home_command_pub = self.create_publisher(
             String,
-            HOME_COMMAND_TOPIC, # 이제 '/room_command'
+            HOME_COMMAND_TOPIC,
             10
         )
         
         self.get_logger().info(f'RobotRotator Node started. Waiting for rotation commands on {ROBOT_ROTATE_COMMAND_TOPIC}...')
 
     def create_relative_goal_pose(self, angle_rad):
-        # ... (기존 create_relative_goal_pose 함수와 동일) ...
+        """base_link 프레임 기준으로 회전 목표 PoseStamped를 생성합니다."""
         pose = PoseStamped()
         pose.header.frame_id = "base_link" 
         pose.header.stamp = self.get_clock().now().to_msg()
@@ -79,7 +79,7 @@ class RobotRotator(Node):
         """로봇을 지정된 각도(라디안)만큼 회전시킵니다."""
         
         goal_pose = self.create_relative_goal_pose(angle_rad)
-        self.get_logger().warn(f"🔄 로봇 회전 명령 전송: {math.degrees(angle_rad):.1f}도 회전 시작... (현재 횟수: {self.rotation_count})")
+        self.get_logger().warn(f"🔄 로봇 회전 명령 전송: {math.degrees(angle_rad):.1f}도 회전 시작...")
         self.navigator.goToPose(goal_pose) 
 
         while not self.navigator.isTaskComplete():
@@ -96,43 +96,51 @@ class RobotRotator(Node):
 
 
     def rotate_command_callback(self, msg: String):
-        """QR Detector로부터 회전 명령을 받아 왼쪽 45도 회전을 실행합니다."""
+        """QR Detector로부터 회전 명령을 받아 회전을 실행하고 재검사 명령을 발행합니다."""
         full_command = msg.data.strip()
         
-        # 🌟🌟🌟 명령 파싱: 'ROTATE_LEFT_45:go_room501' -> ['ROTATE_LEFT_45', 'go_room501'] 🌟🌟🌟
         parts = full_command.split(':', 1)
         if len(parts) != 2:
             self.get_logger().error(f"❌ 잘못된 회전 명령 형식 수신: {full_command}. 형식은 'COMMAND:TARGET'이어야 합니다.")
             return
             
-        command = parts[0] # ROTATE_LEFT_45
-        target_command = parts[1] # go_room501
+        command = parts[0]
+        target_command = parts[1] # go_room501 등
 
         if command == "ROTATE_LEFT_45":
             self.rotation_count += 1
             
-            # 🌟🌟🌟 8회 초과 검사 로직 🌟🌟🌟
+            # 🌟🌟🌟 1회 초과 검사 로직 (두 번째 회전 명령은 홈 복귀) 🌟🌟🌟
             if self.rotation_count > MAX_ROTATION_COUNT:
-                self.get_logger().error(f"🚨🚨🚨 최대 회전 횟수 ({MAX_ROTATION_COUNT}회) 초과! 홈 복귀 명령을 발행합니다. 🚨🚨🚨")
+                self.get_logger().error(f"🚨🚨🚨 회전 명령 재수신! (2번째 이상). 홈 복귀 명령을 발행합니다. 🚨🚨🚨")
                 
                 # 홈 복귀 명령 발행 (토픽: /room_command)
                 home_msg = String()
-                home_msg.data = "go_home" # nav2_commander가 처리할 명령
+                home_msg.data = "go_home"
                 self.home_command_pub.publish(home_msg)
                 
                 # 카운트 초기화 (다음 임무 대비)
                 self.rotation_count = 0
                 return
 
-            # 8회 이하일 경우 회전 실행
-            if self.rotate_robot(ROTATE_ANGLE_RAD):
-                # 회전 성공 후 QR Detector에게 재검사 명령 발행
-                self.get_logger().warn(f"🔄 회전 완료. QR Detector에게 재검사 명령 ({target_command})을 보냅니다.")
+            # 🌟🌟🌟 1회 동작 실행: 왼쪽 45도 회전 🌟🌟🌟
+            if self.rotate_robot(ROTATE_LEFT_45_RAD):
                 
-                # 🌟🌟🌟 파싱된 목표 명령(target_command)을 재검사 명령으로 사용 🌟🌟🌟
+                # 1. QR Detector에게 재검사 명령 발행 (QR 인식 중이라는 것을 확인하는 용도)
+                self.get_logger().warn(f"🔄 왼쪽 45도 회전 완료. QR Detector에게 재검사 명령 ({target_command})을 보냅니다.")
                 recheck_msg = String()
                 recheck_msg.data = target_command
                 self.qr_command_pub.publish(recheck_msg)
+                
+                # 2. 🌟🌟🌟 (추가) QR 인식 중인지 확인하는 시간 필요 🌟🌟🌟
+                # 실제 동작에서는 QR Detector가 응답하거나 타임아웃될 때까지 대기해야 하지만,
+                # 여기서는 단순히 *로직 상의 순서*를 맞추기 위해 1초 정도 대기 (실제 로봇 동작에 따라 수정 필요)
+                rclpy.spin_once(self, timeout_sec=1.0) 
+                
+                # 3. 🌟🌟🌟 오른쪽 90도 회전 (총 -45도 위치) 🌟🌟🌟
+                if self.rotate_robot(ROTATE_RIGHT_90_RAD):
+                    self.get_logger().warn("✅ 1회 회전 동작(L45 -> R90) 완료. 다음 명령 대기 중.")
+                
             
         else:
             self.get_logger().warn(f"⚠️ 알 수 없는 회전 명령 수신: {command}")
