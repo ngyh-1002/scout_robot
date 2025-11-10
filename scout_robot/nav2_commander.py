@@ -11,13 +11,15 @@ import yaml
 
 # 🌟 QR Detector에게 보낼 명령 토픽 정의
 QR_COMMAND_TOPIC = "/qr_check_command"
+# 🌟🌟🌟 관리자에게 알림을 보낼 토픽 정의 🌟🌟🌟
+ADMIN_ALERT_TOPIC = "/admin_alert"
 
 class RoomNavigator(Node):
     def __init__(self):
         super().__init__('room_navigator')
         self.navigator = BasicNavigator()
 
-        # --- rooms.yaml 경로 설정 및 좌표 로드 ---
+        # --- rooms.yaml 경로 설정 및 좌표 로드 (생략) ---
         package_share = get_package_share_directory('scout_robot')
         yaml_path = os.path.join(package_share, 'rooms.yaml')
 
@@ -30,8 +32,8 @@ class RoomNavigator(Node):
             
         self.start_pose = [rooms['start']['x'], rooms['start']['y'], rooms['start']['theta']]
         self.room501_pose = [rooms['room501']['x'], rooms['room501']['y'], rooms['room501']['theta']]
-        self.room502_pose = [rooms['room502']['x'], rooms['room502']['y'], rooms['room502']['theta']] # 🌟 추가
-        self.room503_pose = [rooms['room503']['x'], rooms['room503']['y'], rooms['room503']['theta']] # 🌟 추가
+        self.room502_pose = [rooms['room502']['x'], rooms['room502']['y'], rooms['room502']['theta']]
+        self.room503_pose = [rooms['room503']['x'], rooms['room503']['y'], rooms['room503']['theta']]
         self.home_pose = [rooms['home']['x'], rooms['home']['y'], rooms['home']['theta']]
         self.start_pose_coords = rooms['start']
 
@@ -51,13 +53,21 @@ class RoomNavigator(Node):
             10
         )
         
-        # 2) 🌟 QR 검사 명령 발행 (QR Detector에게 보냅니다)
+        # 2) QR 검사 명령 발행 (QR Detector에게 보냅니다)
         self.qr_command_pub = self.create_publisher(
             String,
             QR_COMMAND_TOPIC,
             10
         )
-        self.get_logger().info(f'RoomNavigator Node started. Publishing QR commands on {QR_COMMAND_TOPIC}.')
+        
+        # 3) 🌟🌟🌟 관리자 알림 발행 🌟🌟🌟
+        self.admin_alert_pub = self.create_publisher(
+            String,
+            ADMIN_ALERT_TOPIC,
+            10
+        )
+        
+        self.get_logger().info(f'RoomNavigator Node started. Publishing QR commands on {QR_COMMAND_TOPIC} and Admin alerts on {ADMIN_ALERT_TOPIC}.')
 
 
     def create_goal_pose(self, x, y, theta, frame_id="map", is_initial=False):
@@ -86,7 +96,15 @@ class RoomNavigator(Node):
         self.qr_command_pub.publish(msg)
         self.get_logger().warn(f"➡️ '{command}' 도착 완료. QR Detector에게 검사 명령 발행 완료.")
 
-    def move_and_wait(self, pose: PoseStamped, name: str, command: str, check_qr: bool = True): # 🌟 check_qr 인자 추가
+    def publish_admin_alert(self, message: str):
+        """관리자에게 알림을 발행합니다."""
+        msg = String()
+        msg.data = message
+        self.admin_alert_pub.publish(msg)
+        self.get_logger().error(f"🚨 관리자 알림 발행: {message}")
+
+
+    def move_and_wait(self, pose: PoseStamped, name: str, command: str, check_qr: bool = True):
         """목표로 이동을 요청하고 완료될 때까지 대기합니다. 완료 후 QR 검사 명령을 발행합니다."""
         self.get_logger().info(f"'{name}'(x:{pose.pose.position.x:.2f}, y:{pose.pose.position.y:.2f})로 이동 명령 전송. 출발합니다.")
         self.navigator.goToPose(pose)
@@ -99,14 +117,27 @@ class RoomNavigator(Node):
         
         if result == TaskResult.SUCCEEDED:
             self.get_logger().info(f"✅ '{name}' 도착 완료!")
-            # 🌟 check_qr이 True일 경우에만 QR 검사 명령 발행
+            # check_qr이 True일 경우에만 QR 검사 명령 발행
             if check_qr:
                 self.publish_qr_command(command) 
         
         elif result == TaskResult.CANCELED:
             self.get_logger().warn(f"⚠️ '{name}' 이동이 취소되었습니다.")
+        
         elif result == TaskResult.FAILED:
             self.get_logger().error(f"❌ '{name}' 이동 실패. 로봇의 위치나 지도를 확인하세요.")
+            
+            # 🌟🌟🌟 1. Home 복귀 중 실패 시 관리자에게 알림 🌟🌟🌟
+            if name == "home":
+                alert_msg = f"NAV FAILED: Home 복귀 중 실패! 로봇의 위치를 수동으로 확인해야 합니다."
+                self.publish_admin_alert(alert_msg)
+                
+            # 🌟🌟🌟 2. Nav2 이동 실패 시 전체 QR 검사 명령 발행 🌟🌟🌟
+            # 일반 목표 이동 중 실패했거나, Home 복귀 중 실패했지만 알림만 보낸 경우
+            # 즉시 AMCL 재설정을 시도하기 위해 모든 QR을 검사하도록 요청합니다.
+            self.get_logger().warn("🚨 이동 실패로 AMCL 강제 재설정을 위해 모든 QR 검사 모드 요청.")
+            self.qr_command_pub.publish(String(data="check_all_qr"))
+            
         else:
             self.get_logger().info(f"'{name}' 이동 결과: {result.name}")
 
@@ -120,12 +151,12 @@ class RoomNavigator(Node):
             pose = self.create_goal_pose(x, y, theta)
             self.move_and_wait(pose, "room501", command, check_qr=True) 
 
-        elif command == "go_room502": # 🌟 추가
+        elif command == "go_room502":
             x, y, theta = self.room502_pose
             pose = self.create_goal_pose(x, y, theta)
             self.move_and_wait(pose, "room502", command, check_qr=True) 
 
-        elif command == "go_room503": # 🌟 추가
+        elif command == "go_room503":
             x, y, theta = self.room503_pose
             pose = self.create_goal_pose(x, y, theta)
             self.move_and_wait(pose, "room503", command, check_qr=True) 
@@ -138,7 +169,6 @@ class RoomNavigator(Node):
         elif command == "go_start": 
             x, y, theta = self.start_pose
             pose = self.create_goal_pose(x, y, theta)
-            # 🌟🌟🌟 start 좌표로 이동 시에는 QR 검사 명령 발행하지 않음 (check_qr=False) 🌟🌟🌟
             self.move_and_wait(pose, "start", command, check_qr=False) 
             
         else:
