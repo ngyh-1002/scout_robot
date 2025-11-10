@@ -15,7 +15,8 @@ QR_COMMAND_TOPIC = "/qr_check_command"
 AMCL_RESET_COMMAND_TOPIC = "/amcl_reset_command"
 # 🌟🌟🌟 로봇 회전 명령을 보낼 토픽 정의 🌟🌟🌟
 ROBOT_ROTATE_COMMAND_TOPIC = "/robot_rotate_command"
-
+# @@ qr node @@
+QR_DETECTION_SUCCESS_TOPIC = "/qr_detection_success"
 COMMAND_TO_QR_MAP = {
     "go_room501": "501",
     "go_home": "home",  
@@ -70,6 +71,13 @@ class QrDetector(Node):
             10
         )
         
+        # @@:별2::별2::별2: 5. QR 인식 성공 신호 발행 Publisher 추가 :별2::별2::별2:@@
+        self.qr_success_pub = self.create_publisher(
+            String,
+            QR_DETECTION_SUCCESS_TOPIC,
+            10
+        )
+
         self.get_logger().info(f'QR Detector Node started. Publishing rotation commands on {ROBOT_ROTATE_COMMAND_TOPIC}...')
 
     def load_room_coordinates(self):
@@ -235,6 +243,13 @@ class QrDetector(Node):
                         reset_msg.data = decoded_data 
                         self.amcl_reset_pub.publish(reset_msg)
                         
+                        # @@@:별2::별2::별2:초음파 노드에게 인식 성공 신호 발행 :별2::별2::별2: @@@
+                        success_msg = String()
+                        # 초음파 노드가 필요한 정보를 담아 발행 (예: "SUCCESS:501")
+                        success_msg.data = f"QR_SUCCESS:{decoded_data}"
+                        self.qr_success_pub.publish(success_msg)
+                        self.get_logger().info(f"Published QR Success Signal: {success_msg.data}")
+
                         # QR 코드 감지 성공 후 스캔 중지
                         self.expected_qr_data = None
                         
