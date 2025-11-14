@@ -4,6 +4,108 @@
 # 🚀 Nav2 경로 생성 실패 문제 분석 및 해결방안
 
 ## 📌 1. 문제 상황 개요
+---
+
+### 1️⃣ `global_costmap.global_costmap`: Received request to clear entirely
+
+```
+[INFO] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+```
+
+* 의미: 글로벌 코스트맵(global costmap)이 “완전히 초기화(clear)” 요청을 받았다는 뜻.
+* 이유: 보통 장애물이 갑자기 바뀌거나 로봇이 경로를 다시 계산해야 할 때, 맵을 새로 그리려고 함.
+
+---
+
+### 2️⃣ `planner_server` 관련 경고
+
+```
+[WARN] [planner_server]: GridBased: failed to create plan with tolerance 0.50
+[WARN] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (0.38, -0.04)
+[WARN] [planner_server]: [compute_path_to_pose] [ActionServer] Aborting handle
+```
+
+* 의미:
+
+  * **GridBased Planner**가 목표 위치 `(0.38, -0.04)`까지 경로를 만들지 못했다.
+  * `tolerance 0.50` → 목표에서 0.5m 내에서 도달 가능하면 허용하겠다는 설정인데, 이 범위 내에서도 유효 경로를 찾지 못했다.
+  * 결국 경로 계산이 실패해서 ActionServer에서 **Abort 처리** 됨.
+* 원인 가능성:
+
+  * 장애물이 경로를 막고 있음.
+  * 로봇 초기 위치와 목표 사이에 **연결된 경로가 없음**.
+  * 코스트맵이나 SLAM 정보가 잘못됨.
+
+---
+
+### 3️⃣ `behavior_server` 관련 경고
+
+```
+[INFO] [behavior_server]: Running spin
+[WARN] [behavior_server]: Collision Ahead - Exiting Spin
+[WARN] [behavior_server]: spin failed
+```
+
+* 의미:
+
+  * **Spin behavior**: 로봇이 제자리에서 360도 회전해서 주변 상황을 확인하는 동작.
+  * `Collision Ahead` → 회전 중 전방에 충돌 위험이 감지되어 동작 종료.
+* Backup behavior도 실패:
+
+```
+[WARN] [behavior_server]: Collision Ahead - Exiting DriveOnHeading
+```
+
+* 이유: 로봇이 후진하려 했지만 뒤쪽에도 장애물이 있어서 실패.
+
+---
+
+### 4️⃣ `bt_navigator` 관련
+
+```
+[WARN] [bt_navigator]: [navigate_to_pose] [ActionServer] Aborting handle
+[ERROR] [bt_navigator]: Goal failed
+```
+
+* 의미:
+
+  * Behavior Tree Navigator가 목표 Pose 이동을 처리하다가 **실패**.
+  * 결국 Goal 자체가 실패로 종료됨.
+
+---
+
+### 5️⃣ 전체적으로 요약하면
+
+* 로봇이 목표 위치 `(0.38, -0.04)`로 가려고 시도했지만:
+
+  1. 글로벌/로컬 코스트맵에 장애물 또는 데이터 이상으로 경로 생성 실패
+  2. 회전(spin) 및 후진(backup) 행동 시도했지만 충돌 위험 때문에 모두 실패
+  3. Nav2 BT Navigator가 최종적으로 Goal을 실패 처리
+
+* 즉 **현재 맵/환경에서 목표까지 안전하게 도달할 경로가 없다는 뜻**.
+
+---
+
+### 🔹 원인과 체크리스트
+
+1. **코스트맵 확인**
+
+   * `ros2 topic echo /global_costmap/costmap` 확인 → 장애물이 너무 많거나 로봇 주변에 데이터를 잘못 인식했는지 확인.
+2. **SLAM / AMCL 위치 확인**
+
+   * 로봇의 `pose`가 실제 위치와 맞는지 확인.
+3. **목표 위치 유효성**
+
+   * 목표가 로봇 주변에 지나갈 수 없는 위치는 아닌지 확인.
+4. **로봇 크기 / footprint**
+
+   * 로봇 footprint가 실제 맵의 통로보다 커서 경로 생성이 불가능할 수 있음.
+5. **Nav2 planner 설정**
+
+   * GridBased planner tolerance, inflation radius, obstacle range 등 매개변수 확인.
+
+---
+
 
 ROS2 Nav2 환경에서 스카우트 미니 로봇(폭 58cm, 길이 62cm)을 사용해 네비게이션을 수행하는 과정에서, 특정 목표 지점으로 이동하려고 할 때 글로벌 플래너가 반복적으로 경로 생성에 실패하고 다양한 Behavior(Spin, Backup 등)까지 실패하는 로그가 발생하였다.
 
