@@ -89,7 +89,7 @@ Nav2(Global Planner, NavFn/Smac 등)에서는 전역 경로 탐색 시
 ---
 
 # ✔ 최종 결론 요약
-
+![Uploading 스크린샷 2025-11-15 14-18-31.png…]()
 
 ```
 A* = 휴리스틱(Euclidean Distance)을 사용하여 목표 방향으로 탐색을 집중시키므로  
