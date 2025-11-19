@@ -27,41 +27,42 @@
     </table>
   </div>
 
-  <!-- 2번 표: 센서 사용 개발환경-->
-  <div style="flex-shrink:0; width:320px;">
-    <table border="1" style="width:100%; table-layout:fixed; font-size:12px;">
-      <tr>
-        <th>참고 이미지</th>
-        <th>패키지 설치</th>
-        <th>참고 링크</th>
-      </tr>
-      <tr>
-        <td><img src="https://github.com/user-attachments/assets/26c7f88c-59d5-4919-8ce9-36dffa83e4d6" width="100" height="100" style="object-fit:cover;"/></td>
-        <td>ROS2 Humble 설치</td>
-        <td>https://docs.ros.org/en/humble/index.html</td>
-      </tr>
-      <tr>
-        <td><img src="https://github.com/user-attachments/assets/9317e4fd-b81e-41cf-8263-e188a706e977" width="100" height="100" style="object-fit:cover;"/></td>
-        <td>SLAM Toolbox 설치</td>
-        <td>[슬램 툴박스 공식문서](https://wiki.ros.org/slam_toolbox)</td>
-      </tr>
-      <tr>
-        <td><img src="https://github.com/user-attachments/assets/c0954e22-2943-4deb-83d1-25959c3fd16e" width="100" height="100" style="object-fit:cover;"/></td>
-        <td>Agilex 공식 GitHub <b>scout_ros2</b> 패키지 빌드</td>
-        <td>[Agilex공식 깃허브](https://github.com/agilexrobotics/scout_ros2.git)</td>
-      </tr>
-      <tr>
-        <td><img src="https://github.com/user-attachments/assets/c8954346-2abc-42f4-9d16-791e47160700" width="100" height="100" style="object-fit:cover;"/></td>
-        <td>Rviz2 설치</td>
-        <td>[RVIZ 공식문서](https://docs.ros.org/en/humble/Tutorials/Intermediate/RViz/RViz-User-Guide/RViz-User-Guide.html)</td>
-      </tr>
-      <tr>
-        <td><img src="https://github.com/user-attachments/assets/bb4b9fa2-7c34-4641-b1d7-e0b1dae3e125" width="100" height="100" style="object-fit:cover;"/></td>
-        <td>SLAMTEC RPLIDAR A1 패키지 빌드</td>
-        <td>[SLAMTEC 공식 깃허브](https://github.com/Slamtec/rplidar_ros.git)</td>
-      </tr>
-    </table>
-  </div>
+<!-- 2번 표: 센서 사용 개발환경-->
+<div style="flex-shrink:0; width:320px;">
+  <table border="1" style="width:100%; table-layout:fixed; font-size:12px;">
+    <tr>
+      <th>참고 이미지</th>
+      <th>패키지 설치</th>
+      <th>참고 링크</th>
+    </tr>
+    <tr>
+      <td><img src="https://github.com/user-attachments/assets/26c7f88c-59d5-4919-8ce9-36dffa83e4d6" width="100" height="100" style="object-fit:cover;"/></td>
+      <td>ROS2 Humble 설치</td>
+      <td><a href="https://docs.ros.org/en/humble/index.html" target="_blank">ROS2 Humble 공식문서</a></td>
+    </tr>
+    <tr>
+      <td><img src="https://github.com/user-attachments/assets/9317e4fd-b81e-41cf-8263-e188a706e977" width="100" height="100" style="object-fit:cover;"/></td>
+      <td>SLAM Toolbox 설치</td>
+      <td><a href="https://wiki.ros.org/slam_toolbox" target="_blank">슬램 툴박스 공식문서</a></td>
+    </tr>
+    <tr>
+      <td><img src="https://github.com/user-attachments/assets/c0954e22-2943-4deb-83d1-25959c3fd16e" width="100" height="100" style="object-fit:cover;"/></td>
+      <td>Agilex 공식 GitHub <b>scout_ros2</b> 패키지 빌드</td>
+      <td><a href="https://github.com/agilexrobotics/scout_ros2.git" target="_blank">Agilex 공식 깃허브</a></td>
+    </tr>
+    <tr>
+      <td><img src="https://github.com/user-attachments/assets/c8954346-2abc-42f4-9d16-791e47160700" width="100" height="100" style="object-fit:cover;"/></td>
+      <td>Rviz2 설치</td>
+      <td><a href="https://docs.ros.org/en/humble/Tutorials/Intermediate/RViz/RViz-User-Guide/RViz-User-Guide.html" target="_blank">RVIZ 공식문서</a></td>
+    </tr>
+    <tr>
+      <td><img src="https://github.com/user-attachments/assets/bb4b9fa2-7c34-4641-b1d7-e0b1dae3e125" width="100" height="100" style="object-fit:cover;"/></td>
+      <td>SLAMTEC RPLIDAR A1 패키지 빌드</td>
+      <td><a href="https://github.com/Slamtec/rplidar_ros.git" target="_blank">SLAMTEC 공식 깃허브</a></td>
+    </tr>
+  </table>
+</div>
+
 
   <!-- 3번 표: TF Tree -->
   <div style="flex-shrink:0; width:320px;">
