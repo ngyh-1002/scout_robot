@@ -84,6 +84,6 @@ flowchart LR
 
     A[센서]
     A --> B[패키지 설치]
-    B --> |노드 실행 및 발행|D[frame 변환 및 TF_TREE 구성]
+    B --> |노드 실행 및 토픽 발행|D[frame 변환 및 TF_TREE 구성]
     D --> E[매핑 진행]
 ```
