@@ -1,5 +1,6 @@
-<div style="display:flex; align-items:flex-start; gap:10px;">
 ## 센서
+<div style="display:flex; align-items:flex-start; gap:10px;">
+
   <!-- 1번 표: 센서 -->
   <div style="flex-shrink:0; width:320px;">
     <table border="1" style="width:100%; table-layout:fixed; font-size:12px;">
@@ -26,6 +27,7 @@
       </tr>
     </table>
   </div>
+
 ## 패키지 환경
 <!-- 2번 표: 센서 사용 패키지 환경-->
 <div style="flex-shrink:0; width:320px;">
