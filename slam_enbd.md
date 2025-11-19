@@ -63,7 +63,7 @@
   <div style="flex-shrink:0; width:320px;">
     <table border="1" style="width:100%; table-layout:fixed; font-size:12px;">
       <tr><td style="text-align:center;">프레임 연결 및 TF Tree 구성</td></tr>
-      <tr><td style="text-align:center;"><img width="245" height="88" alt="스크린샷 2025-11-19 15-29-17" src="https://github.com/user-attachments/assets/c682ca9b-2d72-49af-8657-bf5d5ff0c150" />
+      <tr><td style="text-align:center;"><img width="2450" height="880 alt="스크린샷 2025-11-19 15-29-17" src="https://github.com/user-attachments/assets/c682ca9b-2d72-49af-8657-bf5d5ff0c150" />
 </td></tr>
     </table>
   </div>
@@ -73,7 +73,7 @@
   <div style="flex-shrink:0; width:320px;">
     <table border="1" style="width:100%; table-layout:fixed; font-size:12px;">
       <tr><td style="text-align:center;">RVIZ2를 사용한 매핑진행</td></tr>
-      <tr><td style="text-align:center;"><img width="211" height="140" alt="min_range:30스크린샷 2025-11-05 14-19-31" src="https://github.com/user-attachments/assets/573ad7a5-228d-45c0-b702-3fb2ce1dae20" />
+      <tr><td style="text-align:center;"><img width="2110" height="1400" alt="min_range:30스크린샷 2025-11-05 14-19-31" src="https://github.com/user-attachments/assets/573ad7a5-228d-45c0-b702-3fb2ce1dae20" />
 </td></tr>
     </table>
   </div>
