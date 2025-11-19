@@ -31,13 +31,8 @@
 <div style="flex-shrink:0; width:320px;">
   <table border="1" style="width:100%; table-layout:fixed; font-size:12px;">
     <tr>
-      <th>참고 이미지</th>
-      <th>패키지 설치</th>
-      <th>참고 링크</th>
-    </tr>
-    <tr>
       <td><img src="https://github.com/user-attachments/assets/26c7f88c-59d5-4919-8ce9-36dffa83e4d6" width="100" height="100" style="object-fit:cover;"/></td>
-      <td>ROS2 Humble 설치</td>
+      <td>ROS2 Humble 호환 설치</td>
       <td><a href="https://docs.ros.org/en/humble/index.html" target="_blank">ROS2 Humble 공식문서</a></td>
     </tr>
     <tr>
