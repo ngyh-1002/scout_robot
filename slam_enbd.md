@@ -74,7 +74,8 @@
   <div style="flex-shrink:0; width:320px;">
     <table border="1" style="width:100%; table-layout:fixed; font-size:12px;">
       <tr><td style="text-align:center;">RVIZ2를 사용한 매핑진행</td></tr>
-      <tr><td style="text-align:center;"><img width="300" height="300" alt="스크린샷 2025-11-19 15-34-35" src="https://github.com/user-attachments/assets/35d2f865-48bd-4f74-9c02-a0bbcf08bedf" /></td></tr>
+      <tr><td style="text-align:center;"><img width="300" height="300" alt="스크린샷 2025-11-19 15-48-40" src="https://github.com/user-attachments/assets/7bffff9b-bb02-4d13-b9a4-ebc3ccf6c80e" />
+</td></tr>
     </table>
   </div>
 
