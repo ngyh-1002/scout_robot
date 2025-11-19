@@ -9,9 +9,9 @@
 
   <tr>
     <td>
-      <div style="width:80px;height:80px;overflow:hidden;">
+      <div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;border:1px solid #ccc;">
         <img src="https://github.com/user-attachments/assets/38dfed2d-a75f-403c-88f4-4f91c3f68a1e"
-             style="width:80px;height:80px;object-fit:cover;display:block;" />
+             style="max-width:100%;max-height:100%;object-fit:contain;" />
       </div>
     </td>
     <td>Ubuntu 22.04 Server 설치</td>
@@ -20,9 +20,9 @@
 
   <tr>
     <td>
-      <div style="width:80px;height:80px;overflow:hidden;">
+      <div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;border:1px solid #ccc;">
         <img src="https://github.com/user-attachments/assets/26c7f88c-59d5-4919-8ce9-36dffa83e4d6"
-             style="width:80px;height:80px;object-fit:cover;display:block;" />
+             style="max-width:100%;max-height:100%;object-fit:contain;" />
       </div>
     </td>
     <td>ROS2 Humble 설치</td>
@@ -31,9 +31,9 @@
 
   <tr>
     <td>
-      <div style="width:80px;height:80px;overflow:hidden;">
+      <div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;border:1px solid #ccc;">
         <img src="https://github.com/user-attachments/assets/9317e4fd-b81e-41cf-8263-e188a706e977"
-             style="width:80px;height:80px;object-fit:cover;display:block;" />
+             style="max-width:100%;max-height:100%;object-fit:contain;" />
       </div>
     </td>
     <td>SLAM Toolbox 설치</td>
@@ -42,9 +42,9 @@
 
   <tr>
     <td>
-      <div style="width:80px;height:80px;overflow:hidden;">
+      <div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;border:1px solid #ccc;">
         <img src="https://github.com/user-attachments/assets/c0954e22-2943-4deb-83d1-25959c3fd16e"
-             style="width:80px;height:80px;object-fit:cover;display:block;" />
+             style="max-width:100%;max-height:100%;object-fit:contain;" />
       </div>
     </td>
     <td>Agilex 공식 GitHub <b>scout_ros2</b> 패키지 빌드</td>
@@ -53,9 +53,9 @@
 
   <tr>
     <td>
-      <div style="width:80px;height:80px;overflow:hidden;">
+      <div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;border:1px solid #ccc;">
         <img src="https://github.com/user-attachments/assets/8b88d262-5fe7-4db9-a36b-21d2bfd02756"
-             style="width:80px;height:80px;object-fit:cover;display:block;" />
+             style="max-width:100%;max-height:100%;object-fit:contain;" />
       </div>
     </td>
     <td>Nav2 설치</td>
@@ -64,9 +64,9 @@
 
   <tr>
     <td>
-      <div style="width:80px;height:80px;overflow:hidden;">
+      <div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;border:1px solid #ccc;">
         <img src="https://github.com/user-attachments/assets/f570dd2d-c4cf-4172-b734-dbc9bb2543d8"
-             style="width:80px;height:80px;object-fit:cover;display:block;" />
+             style="max-width:100%;max-height:100%;object-fit:contain;" />
       </div>
     </td>
     <td>v4l2_camera 설치</td>
@@ -75,9 +75,9 @@
 
   <tr>
     <td>
-      <div style="width:80px;height:80px;overflow:hidden;">
+      <div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;border:1px solid #ccc;">
         <img src="https://github.com/user-attachments/assets/c8954346-2abc-42f4-9d16-791e47160700"
-             style="width:80px;height:80px;object-fit:cover;display:block;" />
+             style="max-width:100%;max-height:100%;object-fit:contain;" />
       </div>
     </td>
     <td>Rviz2 설치</td>
@@ -86,9 +86,9 @@
 
   <tr>
     <td>
-      <div style="width:80px;height:80px;overflow:hidden;">
+      <div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;border:1px solid #ccc;">
         <img src="https://github.com/user-attachments/assets/bb4b9fa2-7c34-4641-b1d7-e0b1dae3e125"
-             style="width:80px;height:80px;object-fit:cover;display:block;" />
+             style="max-width:100%;max-height:100%;object-fit:contain;" />
       </div>
     </td>
     <td>SLAMTEC RPLIDAR A1 패키지 빌드</td>
