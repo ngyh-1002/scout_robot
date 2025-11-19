@@ -72,3 +72,40 @@
   </div>
 
 </div>
+<svg width="1100" height="400" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- 1번 표: 센서 -->
+  <rect x="20" y="20" width="320" height="350" fill="#f0f8ff" stroke="#000" stroke-width="2"/>
+  <text x="180" y="40" font-size="16" text-anchor="middle" font-weight="bold">1. 센서</text>
+  <text x="180" y="70" font-size="12" text-anchor="middle">LIDAR, IMU, ENCODER</text>
+  <line x1="20" y1="90" x2="340" y2="90" stroke="#000" stroke-width="1"/>
+  <text x="180" y="110" font-size="12" text-anchor="middle">사진 포함</text>
+  <text x="180" y="130" font-size="12" text-anchor="middle">역할 표시</text>
+
+  <!-- 2번 표: 개발환경 -->
+  <rect x="370" y="20" width="320" height="350" fill="#fff0f5" stroke="#000" stroke-width="2"/>
+  <text x="530" y="40" font-size="16" text-anchor="middle" font-weight="bold">2. 개발환경</text>
+  <text x="530" y="70" font-size="12" text-anchor="middle">ROS2, SLAM Toolbox, Rviz2</text>
+  <line x1="370" y1="90" x2="690" y2="90" stroke="#000" stroke-width="1"/>
+  <text x="530" y="110" font-size="12" text-anchor="middle">이미지 포함</text>
+  <text x="530" y="130" font-size="12" text-anchor="middle">설치 & 링크 표시</text>
+
+  <!-- 3번 표: TF Tree -->
+  <rect x="720" y="20" width="320" height="350" fill="#f5fff0" stroke="#000" stroke-width="2"/>
+  <text x="880" y="40" font-size="16" text-anchor="middle" font-weight="bold">3. TF Tree</text>
+  <line x1="720" y1="90" x2="1040" y2="90" stroke="#000" stroke-width="1"/>
+  <text x="880" y="110" font-size="12" text-anchor="middle">프레임 연결</text>
+  <text x="880" y="130" font-size="12" text-anchor="middle">이미지 포함</text>
+
+  <!-- 화살표 -->
+  <line x1="340" y1="200" x2="370" y2="200" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="690" y1="200" x2="720" y2="200" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#000" />
+    </marker>
+  </defs>
+
+</svg>
+
