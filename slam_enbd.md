@@ -66,7 +66,13 @@
       <tr><td style="text-align:center;"><img src="사진_경로" width="100" height="100" style="object-fit:cover;"/></td></tr>
     </table>
   </div>
-
+  <!-- 4번 표: TF Tree -->
+  <div style="flex-shrink:0; width:320px;">
+    <table border="1" style="width:100%; table-layout:fixed; font-size:12px;">
+      <tr><td style="text-align:center;">RVIZ2를 사용한 매핑진행</td></tr>
+      <tr><td style="text-align:center;"><img src="사진_경로" width="100" height="100" style="object-fit:cover;"/></td></tr>
+    </table>
+  </div>
 
 ```mermaid
 flowchart LR
