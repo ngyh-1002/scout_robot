@@ -83,5 +83,3 @@ flowchart LR
     C --> D[frame 변환 및 TF_TREE 구성]
     D --> E[매핑 진행]
 ```
-<img width="1037" height="509" alt="순서도" src="https://github.com/user-attachments/assets/a285f477-977d-4b45-bf89-7e94a9f74b45" />
-
