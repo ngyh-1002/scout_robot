@@ -63,7 +63,8 @@
   <div style="flex-shrink:0; width:320px;">
     <table border="1" style="width:100%; table-layout:fixed; font-size:12px;">
       <tr><td style="text-align:center;">프레임 연결 및 TF Tree 구성</td></tr>
-      <tr><td style="text-align:center;"><img width="2450" height="880 alt="스크린샷 2025-11-19 15-29-17" src="https://github.com/user-attachments/assets/c682ca9b-2d72-49af-8657-bf5d5ff0c150" />
+      <tr><td style="text-align:center;"><img width="575" height="881" alt="스크린샷 2025-11-19 15-32-08" src="https://github.com/user-attachments/assets/f9654367-dd2e-436a-b7b9-a7af950e84a1" />
+
 </td></tr>
     </table>
   </div>
